@@ -1,0 +1,577 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# *THIS PROJECT IS MEANT TO BE AN EXPLORATION IN DATA CLEANING AND FILTERING IN ORDER TO USE VISUALIZATIONS TO COME TO SIMPLE CONCLUSIONS AS TO WHETHER OR NOT LIFE EXPECTANCY IS IN ANY WAY CORRELATED TO POPULATION DISTRIBUTION*
+
+# **The dataset used is the populat world development indicators dataset than can be found at https://www.kaggle.com/worldbank/world-development-indicators***
+
+# In[348]:
+
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('pylab', 'inline')
+import warnings
+warnings.filterwarnings('ignore')
+
+#import and preview the dataset
+data = pd.read_csv('./Indicators.csv')
+data.head()
+
+
+# In[224]:
+
+
+#looking at the list of indicators available for analysis
+data2 = data['IndicatorName'].unique().tolist()
+
+
+# **A natural question that comes to mind when exploring the list above is - can we find interesting correlations between life expectancy and some of the other indicators available?**
+# 
+# *First, let's look at the world population life expectancy as a whole, and in terms of female and male populations.
+# After that we will look at the U.S. population and see how it compares.*
+# 
+# ***All values will be represented in relation to their corresponding year.***
+
+# In[225]:
+
+
+#creating dataframes from the 'data' dataset
+pop_life_exp = data[data['IndicatorCode'].str.match('SP.DYN.LE00.IN')] # total population life expectancy at birth
+fem_life_exp = data[data['IndicatorCode'].str.match('SP.DYN.LE00.FE.IN')] #for females
+male_life_exp = data[data['IndicatorCode'].str.match('SP.DYN.LE00.MA.IN')] #for males
+
+
+# In[226]:
+
+
+pop_life_exp = pop_life_exp[['CountryName', 'Year', 'Value']]
+fem_life_exp = fem_life_exp[['CountryName', 'Year', 'Value']]
+male_life_exp = male_life_exp[['CountryName', 'Year', 'Value']]
+
+
+# In[227]:
+
+
+#check to see if the data have the same dimensions
+pop_life_exp.shape, fem_life_exp.shape, male_life_exp.shape 
+
+
+# In[228]:
+
+
+#The lengths of the data are the same, so for purposes of this project we can continue with creating our dataframes
+pop_life_exp = pop_life_exp.rename(columns = {'Value': 'Total Population', 'CountryName': 'Country'})
+fem_life_exp = fem_life_exp.rename(columns = {'Value': 'Female Population'})
+male_life_exp = male_life_exp.rename(columns = {'Value': 'Male Population'})
+#changing columns names so that when concatenated there is no confusion as to which value belongs to which group
+
+
+# In[229]:
+
+
+fem_life_exp = pd.DataFrame(fem_life_exp['Female Population']) #df for female life expectancy 
+male_life_exp = pd.DataFrame(male_life_exp['Male Population']) #df for male life expectancy
+
+
+# In[230]:
+
+
+#creating and appending to our final data frame that can be used for graphing and analysis
+pop_life_exp.index = np.arange(0, len(pop_life_exp))
+fem_life_exp.index = np.arange(0, len(fem_life_exp))
+male_life_exp.index = np.arange(0, len(male_life_exp))
+life_exp_final = pd.concat([pop_life_exp, fem_life_exp['Female Population'],                             male_life_exp['Male Population']], axis = 1)
+life_exp_final.head() #preview our final dataframe
+
+
+# In[231]:
+
+
+#creating world and US dataframes to be combined for graphing purposes
+world_exp = life_exp_final[life_exp_final['Country'].str.match('World')]
+world_exp = world_exp.set_index('Year') #will be used to represent the world trend in a plot
+us_exp = life_exp_final[life_exp_final['Country'].str.match('United States')]
+us_exp = us_exp.set_index('Year') #will be used to represent the US trend in a plot
+
+
+# In[232]:
+
+
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (20,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Life Expectancy at Birth', fontsize = 20, color = 'b')
+plt.title('Planet Aggregate of World/Female/Male Life Expectancy at Birth from 1960 to 2013', 
+          fontsize = 20, color = 'b')
+sns.lineplot(data = world_exp[["Total Population", 'Male Population',                     'Female Population']], palette = 'deep', linewidth = 5)
+
+
+# **From the plot above, one can clearly see that the pattern is a rising life expectancy for both males and females, with the world aggregate being about the mean of the two, which is expected.**
+# 
+# **Let's take a look at the world average and the US average side by side. Also, let's see if the US female and male populations follow the same trend as the world average**
+
+# In[233]:
+
+
+#changing column names again to avoid confusion
+world_exp = world_exp.rename(columns = {'Total Population': 'World Population Life Expectancy',
+                                       'Female Population': 'World Female Population Life Exp',
+                                       'Male Population': 'World Male Population Life Exp'})
+us_exp = us_exp.rename(columns = {'Total Population': "US Population Life Expectancy",
+                                 'Male Population': 'US Male Population Life Exp',
+                                 'Female Population': 'US Female Population Life Exp'})
+world_us = pd.concat([world_exp, us_exp['US Population Life Expectancy']], axis = 1)
+
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (25,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Life Expectancy at Birth', fontsize = 20, color = 'b')
+plt.title('World vs US Life Expectancy at Birth from 1960 to 2013', fontsize = 20, color = 'b')
+sns.lineplot(data = world_us[["World Population Life Expectancy", 'US Population Life Expectancy']], 
+             palette = 'deep', linewidth = 5)
+
+sns.set(style = 'dark')
+plt.figure(figsize = (25,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Life Expectancy at Birth', fontsize = 20, color = 'b')
+plt.title('US Male/Female Life Expectancy at Birth from 1960 to 2013', fontsize = 20, color = 'b')
+sns.lineplot(data = us_exp[['US Male Population Life Exp', 'US Female Population Life Exp']], 
+             palette = 'deep', linewidth = 5)
+
+
+# **Clearly, the US population life expectancy as well as group female and group male have followed the same trend as the world trend, so let's compare life expectancy to a specific population distribution that we can learn from the data - population in urban vs. rural settings:**
+
+# In[234]:
+
+
+#cleaning 'data' and creating the desired dataframe for use
+urban_pop = data[data["IndicatorCode"].str.match("SP.URB.TOTL.IN.ZS")]
+rural_pop = data[data["IndicatorCode"].str.match("SP.RUR.TOTL.ZS")]
+rural_pop = rural_pop.set_index('Year')
+urban_pop = urban_pop.set_index('Year')
+rural_pop = rural_pop.rename(columns = {'Value': 'Rural Percentage'})
+urban_pop = urban_pop.rename(columns = {'Value': 'Urban Percentage'})
+rural_pop = pd.DataFrame(rural_pop[['CountryName', 'Rural Percentage']])
+urban_pop = pd.DataFrame(urban_pop[['Urban Percentage', 'CountryName']])
+urban_pop.shape, rural_pop.shape 
+#check that they are the same size and let's loop through the country names to see if there are any different values
+
+
+# In[235]:
+
+
+#loop to see if each row matches in both dataframes, if value = 0, they match, 
+#if > 0, there are mismatches somewhere in the data
+
+a = list(rural_pop['CountryName'])
+b = list(urban_pop['CountryName'])
+
+value = 0
+
+for i in range(0,len(a)):
+    if a[i] != b[i]:
+        value += 1
+    else:
+        value += 0
+
+print(value)
+
+
+# In[236]:
+
+
+rural_pop = pd.DataFrame(rural_pop['Rural Percentage'])
+
+
+# In[237]:
+
+
+#good, they are the same. Let's make this one data frame
+urb_rur_pop = pd.concat([urban_pop[['CountryName','Urban Percentage']], rural_pop['Rural Percentage']], axis =1)
+urb_rur_pop.head()
+
+
+# In[238]:
+
+
+world = urb_rur_pop[urb_rur_pop['CountryName'].str.match('World')]
+us = urb_rur_pop[urb_rur_pop['CountryName'].str.match('United States')]
+world = world.rename(columns = {'Urban Percentage': 'World Urban', 'Rural Percentage': 'World Rural'})
+us = us.rename(columns = {'Urban Percentage': 'US Urban', 'Rural Percentage': 'US Rural'})
+us_world_exp = pd.concat([world[['CountryName', 'World Urban', 'World Rural']], us[['US Urban', 
+                        'US Rural']]], axis = 1)
+us_world_exp.head()
+
+
+# In[239]:
+
+
+#creating plot comparison of rural and urban population in the US and over the world average
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (25,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Population Percentage', fontsize = 20, color = 'b')
+plt.title('Urban vs Rural Population Percentage showing the World Avg and the USA',           fontsize = 20, color = 'b')
+sns.lineplot(data = us_world_exp[['World Urban', 'World Rural', 'US Urban', 'US Rural']],           palette = 'dark', linewidth = 5)
+
+#combining dataframes to graph comparisons
+pop_vs_exp_urb = pd.concat([world_us[['World Population Life Expectancy', 'US Population Life Expectancy']],                         us_world_exp[['World Urban', 'US Urban']]], axis =1)
+
+pop_vs_exp_rur = pd.concat([world_us[['World Population Life Expectancy', 'US Population Life Expectancy']],                         us_world_exp[['World Rural', 'US Rural']]], axis = 1)
+
+
+#creating plot comparison of US and world life expectancy Avg vs urban population percentages
+sns.set(style = 'darkgrid')
+plt.figure(figsize = (25,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Population Percentage', fontsize = 20, color = 'b')
+plt.title('Urban Population and Population Life Expectancy Percentage showing the World Avg and the USA',           fontsize = 20, color = 'b')
+sns.lineplot(data = pop_vs_exp_urb[['World Population Life Expectancy', 'US Population Life Expectancy',                          'World Urban', 'US Urban']], palette = 'deep', linewidth = 5)
+
+#creating plot comparison of US and world life epectancy vs rural population percentages
+sns.set(style = 'white')
+plt.figure(figsize = (25,8))
+plt.xlabel('Year', fontsize = 20, color = 'b')
+plt.ylabel('Population Percentage', fontsize = 20, color = 'b')
+plt.title('Rural Population and Population Life Expectancy Percentage showing the World Avg and the USA',           fontsize = 20, color = 'b')
+sns.lineplot(data = pop_vs_exp_rur[['World Population Life Expectancy', 'US Population Life Expectancy',                          'World Rural', 'US Rural']], palette = 'deep', linewidth = 5)
+
+
+
+
+# **There are a few key takeaways from examining the above plots.**
+# > 1. Urban population has been steadily increasing in both the world in general and the US.
+# > 2. As urban population increases, life expectancy also increases.
+# > 3. Conversely, as rural population decreases, life expectancy increases.
+# 
+# **Positive and Negative Correlations are apparent in this data, so let's use linear regression to create an equation to predict life expectancy based on changes in urban/rural population distribution**
+
+# In[240]:
+
+
+#creating clean combined dataframe to use for regression
+for_regress = pd.concat([us_exp, world_exp, us_world_exp], axis = 1)
+for_regress = for_regress.drop(columns = ['Country', 'CountryName'], axis = 1)
+for_regress = for_regress.rename(columns = {'World Urban': 'World Urban Population Percentage', 
+                                         'World Rural': 'World Rural Population Percentage',
+                                         'US Urban': 'US Urban Population Percentage',
+                                         'US Rural': 'US Rural Population Percentage'})
+for_regress.isnull().sum()
+
+
+# In[241]:
+
+
+for_regress = for_regress.dropna()
+for_regress.isnull().any()
+
+
+# In[242]:
+
+
+for_regress.head()
+#preview our final dataframe, and it looks good!
+
+
+# **First Let's try using world urban population as the input variable and world population life expectancy as the target.**
+
+# In[243]:
+
+
+A = np.array(for_regress['World Urban Population Percentage'])
+A = np.array([ones(len(A)), A])
+y = np.array(for_regress['World Population Life Expectancy'])
+A.shape, y.shape #check matrix to make sure we can use dot product
+
+
+# In[244]:
+
+
+w1 = linalg.lstsq(A.T,y)[0] #finds optimal parameters
+print(w1)
+
+
+# In[245]:
+
+
+def f(x,w):
+    return w[0] + w[1]*x #linear form of y = mx + b
+
+ax = for_regress.plot(kind = 'scatter', s = 25, x = 'World Urban Population Percentage',
+                     y = 'World Population Life Expectancy', figsize = [15,10])
+x0, x1 = xlim()
+ax.plot([x0,x1], [f(x0, w1), f(x1, w1)], 'g');
+
+
+# **Next, let's see it at work with x variable being the world's rural population percentage:**
+
+# In[246]:
+
+
+A = np.array(for_regress['World Rural Population Percentage'])
+A = np.array([ones(len(A)), A])
+y = np.array(for_regress['World Population Life Expectancy'])
+w1 = linalg.lstsq(A.T,y)[0] #finds optimal parameters
+print(w1)
+
+
+# In[247]:
+
+
+def f(x,w):
+    return w[0] + w[1]*x #linear form of y = mx + b
+
+ax = for_regress.plot(kind = 'scatter', s = 25, x = 'World Rural Population Percentage',
+                     y = 'World Population Life Expectancy', figsize = [15,10])
+x0, x1 = xlim()
+ax.plot([x0,x1], [f(x0, w1), f(x1, w1)], 'r');
+
+
+# **Clearly, the two above x,y pairs work together quite well. Can we predict male population life expectancy if we know the female population life expectancy of a given group?**
+
+# In[248]:
+
+
+A = np.array(for_regress['US Female Population Life Exp'])
+A = np.array([ones(len(A)), A])
+y = np.array(for_regress['US Male Population Life Exp'])
+w1 = linalg.lstsq(A.T,y)[0] #finds optimal parameters
+print(w1)
+
+
+# In[249]:
+
+
+def f(x,w):
+    return w[0] + w[1]*x #linear form of y = mx + b
+
+ax = for_regress.plot(kind = 'scatter', s = 25, x = 'US Female Population Life Exp',
+                     y = 'US Male Population Life Exp', figsize = [15,10])
+x0, x1 = xlim()
+ax.plot([x0,x1], [f(x0, w1), f(x1, w1)], 'm');
+
+
+# **It looks like we can - Let's try it on the world population and see how it looks:**
+
+# In[250]:
+
+
+A = np.array(for_regress['World Female Population Life Exp'])
+A = np.array([ones(len(A)), A])
+y = np.array(for_regress['World Male Population Life Exp'])
+w1 = linalg.lstsq(A.T,y)[0] #finds optimal parameters
+print(w1)
+
+
+# In[251]:
+
+
+def f(x,w):
+    return w[0] + w[1]*x #linear form of y = mx + b
+
+ax = for_regress.plot(kind = 'scatter', s = 25, x = 'World Female Population Life Exp',
+                     y = 'World Male Population Life Exp', figsize = [15,10])
+x0, x1 = xlim()
+ax.plot([x0,x1], [f(x0, w1), f(x1, w1)], 'r');
+
+
+# **Given the data available, life expectancy can be predicted somewhat accurately when using population distribution.**
+# 
+# ***Now, let's take a look at a few major countries and compare them to the world and US plots to see if there are any outlier countries who do not follow the same trend in population distribution and life expectancy***
+
+# In[347]:
+
+
+#creating dataframes to concatenate into one so that we can see how these 7 countries life expectancies compare
+us = life_exp_final[life_exp_final['Country'].str.match('United States')]
+ca = life_exp_final[life_exp_final['Country'].str.match('Canada')]
+de = life_exp_final[life_exp_final['Country'].str.match('Germany')]
+ch = life_exp_final[life_exp_final['Country'].str.match('China')]
+ru = life_exp_final[life_exp_final['Country'].str.match('Russia')]
+br = life_exp_final[life_exp_final['Country'].str.match('Brazil')]
+ke = life_exp_final[life_exp_final['Country'].str.match('Kenya')]
+
+
+# In[253]:
+
+
+us = us.rename(columns = {'Total Population': 'US Population', 'Female Population': 'US Female', 
+                          'Male Population': 'US Male'})
+ca = ca.rename(columns = {'Total Population': 'Canada Population', 'Female Population': 'Canada Female', 
+                          'Male Population': 'Canada Male'})
+de = de.rename(columns = {'Total Population': 'Germany Population', 'Female Population': 'Germany Female', 
+                          'Male Population': 'Germany Male'})
+ch = ch.rename(columns = {'Total Population': 'China Population', 'Female Population': 'China Female', 
+                          'Male Population': 'China Male'})
+ru = ru.rename(columns = {'Total Population': 'Russia Population', 'Female Population': 'Russia Female', 
+                          'Male Population': 'Russia Male'})
+br = br.rename(columns = {'Total Population': 'Brazil Population', 'Female Population': 'Brazil Female', 
+                          'Male Population': 'Brazil Male'})
+ke = ke.rename(columns = {'Total Population': 'Kenya Population', 'Female Population': 'Kenya Female', 
+                          'Male Population': 'Kenya Male'})
+
+
+# In[254]:
+
+
+us.shape, ca.shape, de.shape, ch.shape, ru.shape, br.shape, ke.shape
+
+
+# In[255]:
+
+
+us.index = np.arange(0, len(us))
+ca.index = np.arange(0, len(us))
+de.index = np.arange(0, len(us))
+ch.index = np.arange(0, len(us))
+ru.index = np.arange(0, len(us))
+br.index = np.arange(0, len(us))
+ke.index = np.arange(0, len(us))
+
+
+# In[256]:
+
+
+final = pd.concat([us[['Year','US Population', 'US Female', 'US Male']],
+                   ca[['Canada Population', 'Canada Female', 'Canada Male']],
+                   de[['Germany Population', 'Germany Female', 'Germany Male']],
+                   ch[['China Population', 'China Female', 'China Male']],
+                   ru[['Russia Population', 'Russia Female', 'Russia Male']],
+                   br[['Brazil Population', 'Brazil Female', 'Brazil Male']],
+                   ke[['Kenya Population', 'Kenya Female', 'Kenya Male']]], axis = 1)
+
+
+# In[257]:
+
+
+final.head()
+
+
+# In[258]:
+
+
+final = final.set_index('Year')
+final.head()
+
+
+# In[259]:
+
+
+final.isnull().any()
+
+
+# Now that we have a nice clean dataframe to work with let's plot and visualize.
+
+# In[260]:
+
+
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (30,20))
+plt.xlabel('Year', fontsize = 20)
+plt.ylabel('Population Life Expectancy', fontsize = 20)
+plt.title('''Comparison of seven countries' population life expectancies from 1960 - 2013''', fontsize = 25)
+sns.lineplot(data = final[['US Population', 'Canada Population',
+                          'Germany Population', 'China Population', 'Russia Population',
+                          'Brazil Population', 'Kenya Population']], dashes = False,  linewidth = 8)
+
+
+# ***This is interesting - Germany, USA, and Canada are quite similar and show the same pattern. China shows a similar pattern but had an extremely low expectancy in 1960, but exponentially grew their expectancy during that decade. Brazil comes in low but is steadily increasing, while Russia has a somewhat stagnant/unstable pattern and Kenya experienced a fall in the 90's.***
+# 
+# *Let's take a look at Russia and Kenya in terms of their urban and rural population distribution to see if that may explain something:*
+
+# In[288]:
+
+
+Kenya_exp = pd.DataFrame(final['Kenya Population']) # total population life expectancy at birth
+Russia_exp = pd.DataFrame(final['Russia Population'])
+Kenya_urb  = data[data['IndicatorCode'].str.match('SP.URB.TOTL.IN.ZS')]
+Russia_urb = data[data['IndicatorCode'].str.match('SP.URB.TOTL.IN.ZS')]
+Kenya_rur = data[data['IndicatorCode'].str.match('SP.RUR.TOTL.ZS')]
+Russia_rur = data[data['IndicatorCode'].str.match('SP.RUR.TOTL.ZS')]
+Kenya_urb = Kenya_urb[Kenya_urb['CountryName'].str.match('Kenya')]
+Kenya_rur = Kenya_rur[Kenya_rur['CountryName'].str.match('Kenya')]
+Russia_urb = Russia_urb[Russia_urb['CountryName'].str.match('Russia')]
+Russia_rur = Russia_rur[Russia_rur['CountryName'].str.match('Russia')]
+
+
+# In[289]:
+
+
+Kenya_urb = Kenya_urb.set_index('Year')
+Kenya_rur = Kenya_rur.set_index('Year')
+Russia_rur = Russia_rur.set_index('Year')
+Russia_urb = Russia_urb.set_index('Year')
+
+
+# In[290]:
+
+
+Kenya_urb.head()
+
+
+# In[299]:
+
+
+Kenya_urb = Kenya_urb.rename(columns = {'Value': 'Kenya Urban Population'})
+Kenya_rur = Kenya_rur.rename(columns = {'Value': 'Kenya Rural Population'})
+Kenya_exp = Kenya_exp.rename(columns = {'Kenya Population': 'Kenya Population Life Expectancy'})
+Russia_urb = Russia_urb.rename(columns = {'Value': 'Russia Urban Population'})
+Russia_rur = Russia_rur.rename(columns = {'Value': 'Russia Rural Population'})
+Russia_exp = Russia_exp.rename(columns = {'Russia Population': 'Russia Population Life Expectancy'})
+
+
+# In[345]:
+
+
+russia = pd.concat([Russia_urb['Russia Urban Population'], Russia_rur['Russia Rural Population'], 
+                     Russia_exp], axis = 1)
+russia.head()
+
+
+# In[305]:
+
+
+kenya = pd.concat([Kenya_urb['Kenya Urban Population'], Kenya_rur['Kenya Rural Population'],
+                   Kenya_exp], axis = 1)
+kenya.head()
+
+
+# In[346]:
+
+
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (30,20))
+plt.xlabel('Year', fontsize = 20)
+plt.ylabel('Percentage / Age', fontsize = 20)
+plt.title('Russia Urban and Rural Population vs Population Life Expectancy, 1960-2013', fontsize = 25)
+sns.lineplot(data = russia,  palette = 'pastel', linewidth = 10)
+
+
+# ***Concluding from the above plot, it seems that Russia doesn't fully follow the overall trend of rising urban population and falling rural population leading to higher life expectancy. Although the rural population steadily decreased between 1960 and 1990, the population experienced almost no change in life expectancy during that time. Over the last 23 years of data, there was actually a slight drop in life expectancy up until 2005, and population distribution appears to have stagnated at about 75% Urban and 25% Rural.***
+
+# In[338]:
+
+
+sns.set(style = 'whitegrid')
+plt.figure(figsize = (25,14))
+plt.xlabel('Year', fontsize = 20)
+plt.ylabel('Percentage / Age', fontsize = 20)
+plt.title('Kenya Urban and Rural Population vs Population Life Expectancy, 1960-2013', fontsize = 25)
+sns.lineplot(data = kenya,  palette = 'plasma_r', linewidth = 10)
+
+
+# **This plot shows us that Kenya has actually been following the trend quite accurately with the exception of the decade 1990-2000. Although it is common knowledge that the reason for this was the HIV/AIDS crisis during that time, had this been another dataset with which its history we were not familiar, it would have led us into the direction of asking more questions and further analyzing the data to find possible connections/correlations.**
+
+# ***THE MAIN CONCLUSIONS THAT CAN BE DRAWN FROM THIS BRIEF ANALYSIS ARE:***
+# > 1. The data confirms that life expectancy is on the rise
+# > 2. The data shows the females tend to live longer than males
+# > 3. Population distribution (urban vs. rural) may act as an accurate predictor of life expectancy if past data is available
+
+# In[ ]:
+
+
+
+
